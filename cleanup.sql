@@ -1,0 +1,6 @@
+DROP TABLE IF EXISTS "user" CASCADE;
+DROP FUNCTION IF EXISTS update_user_updated_at() CASCADE;
+DROP TABLE IF EXISTS app_user CASCADE;
+DROP FUNCTION IF EXISTS update_app_user_updated_at() CASCADE;
+DROP TABLE IF EXISTS product CASCADE;
+DROP FUNCTION IF EXISTS update_product_updated_at() CASCADE;

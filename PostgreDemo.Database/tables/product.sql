@@ -1,0 +1,9 @@
+CREATE TABLE product (
+    id BIGINT PRIMARY KEY,
+    name VARCHAR(255) NOT NULL,
+    price DECIMAL(18,2) NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+    deleted BOOLEAN DEFAULT FALSE NOT NULL
+);
