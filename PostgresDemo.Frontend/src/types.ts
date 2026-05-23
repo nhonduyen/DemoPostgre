@@ -1,9 +1,8 @@
 export interface User {
   id: string;
   name: string;
+  username: string;
   createdAt: string;
-  updatedAt: string;
-  deleted: boolean;
 }
 
 export interface Product {
@@ -11,9 +10,6 @@ export interface Product {
   name: string;
   price: number;
   description?: string | null;
-  createdAt: string;
-  updatedAt: string;
-  deleted: boolean;
 }
 
 export interface PagedResult<T> {

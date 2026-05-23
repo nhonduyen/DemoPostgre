@@ -21,7 +21,7 @@ public class UsersController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<PagedResult<UserDto>>> GetAll(int page = 1, int pageSize = 20)
+    public async Task<ActionResult<PagedResult<UserListDto>>> GetAll(int page = 1, int pageSize = 20)
     {
         var result = await _service.GetAll(page, pageSize);
         return Ok(result);
@@ -34,11 +34,36 @@ public class UsersController : ControllerBase
         return dto is null ? NotFound() : Ok(dto);
     }
 
+    [HttpGet("exists")]
+    public async Task<ActionResult> Exists([FromQuery] string username)
+    {
+        if (string.IsNullOrWhiteSpace(username))
+        {
+            return BadRequest("Username is required.");
+        }
+
+        var exists = await _service.UsernameExists(username.Trim());
+        return Ok(new { exists });
+    }
+
     [HttpPost]
     public async Task<ActionResult<UserDto>> Create(CreateUserRequest request)
     {
-        var dto = await _service.Create(request);
-        return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
+        var username = string.IsNullOrWhiteSpace(request.Username) ? request.Name : request.Username;
+        if (await _service.UsernameExists(username.Trim()))
+        {
+            return Conflict("Username already exists.");
+        }
+
+        try
+        {
+            var dto = await _service.Create(request);
+            return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(ex.Message);
+        }
     }
 
     [HttpPut("{id:long}")]

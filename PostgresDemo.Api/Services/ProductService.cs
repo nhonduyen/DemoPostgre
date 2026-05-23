@@ -14,28 +14,25 @@ public class ProductService : IProductService
         _context = context;
     }
 
-    public async Task<PagedResult<ProductDto>> GetAll(int page, int pageSize)
+    public async Task<PagedResult<ProductListDto>> GetAll(int page, int pageSize)
     {
         var actualPage = Math.Max(1, page);
         var actualPageSize = Math.Clamp(pageSize, 1, 100);
 
         var query = _context.Products
-            .Where(p => !p.Deleted)
             .OrderBy(p => p.Id)
-            .Select(p => new ProductDto
+            .Select(p => new ProductListDto
             {
                 Id = p.Id,
                 Name = p.Name,
                 Price = p.Price,
-                Description = p.Description,
-                CreatedAt = p.CreatedAt,
-                UpdatedAt = p.UpdatedAt
+                Description = p.Description
             });
 
         var total = await query.CountAsync();
         var items = await query.Skip((actualPage - 1) * actualPageSize).Take(actualPageSize).ToListAsync();
 
-        return new PagedResult<ProductDto>
+        return new PagedResult<ProductListDto>
         {
             Page = actualPage,
             PageSize = actualPageSize,
@@ -47,7 +44,7 @@ public class ProductService : IProductService
     public async Task<ProductDto?> GetById(long id)
     {
         return await _context.Products
-            .Where(p => p.Id == id && !p.Deleted)
+            .Where(p => p.Id == id)
             .Select(p => new ProductDto
             {
                 Id = p.Id,
@@ -85,24 +82,23 @@ public class ProductService : IProductService
 
     public async Task<bool> Update(long id, UpdateProductRequest request)
     {
-        var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id && !p.Deleted);
-        if (product is null) return false;
-
-        product.Name = request.Name;
-        product.Price = request.Price;
-        product.Description = request.Description;
-
-        await _context.SaveChangesAsync();
-        return true;
+        var rows = await _context.Products.Where(p => p.Id == id)
+            .ExecuteUpdateAsync(p => p
+                .SetProperty(p => p.Name, _ => request.Name)
+                .SetProperty(p => p.Price, _ => request.Price)
+                .SetProperty(p => p.Description, _ => request.Description)
+                .SetProperty(p => p.UpdatedAt, _ => DateTimeOffset.UtcNow)
+            );
+        return rows > 0;
     }
 
     public async Task<bool> Delete(long id)
     {
-        var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id && !p.Deleted);
-        if (product is null) return false;
-
-        product.Deleted = true;
-        await _context.SaveChangesAsync();
-        return true;
+        var rows = await _context.Products.Where(p => p.Id == id)
+            .ExecuteUpdateAsync(p => p
+                .SetProperty(p => p.Deleted, _ => true)
+                .SetProperty(p => p.UpdatedAt, _ => DateTimeOffset.UtcNow)
+            );
+        return rows > 0;
     }
 }

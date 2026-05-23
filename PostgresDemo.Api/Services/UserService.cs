@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using PostgresDemo.Api.Data;
 using PostgresDemo.Api.Entities;
 using PostgresDemo.Api.Models;
+using System;
 using System.Security.Cryptography;
 
 namespace PostgresDemo.Api.Services;
@@ -15,27 +16,25 @@ public class UserService : IUserService
         _context = context;
     }
 
-    public async Task<PagedResult<UserDto>> GetAll(int page, int pageSize)
+    public async Task<PagedResult<UserListDto>> GetAll(int page, int pageSize)
     {
         var actualPage = Math.Max(1, page);
         var actualPageSize = Math.Clamp(pageSize, 1, 100);
 
         var query = _context.Users
-            .Where(u => !u.Deleted)
             .OrderBy(u => u.Id)
-            .Select(u => new UserDto
+            .Select(u => new UserListDto
             {
                 Id = u.Id,
                 Name = u.Name,
                 Username = u.Username,
-                CreatedAt = u.CreatedAt,
-                UpdatedAt = u.UpdatedAt
+                CreatedAt = u.CreatedAt
             });
 
         var total = await query.CountAsync();
         var items = await query.Skip((actualPage - 1) * actualPageSize).Take(actualPageSize).ToListAsync();
 
-        return new PagedResult<UserDto>
+        return new PagedResult<UserListDto>
         {
             Page = actualPage,
             PageSize = actualPageSize,
@@ -47,7 +46,7 @@ public class UserService : IUserService
     public async Task<UserDto?> GetById(long id)
     {
         return await _context.Users
-            .Where(u => u.Id == id && !u.Deleted)
+            .Where(u => u.Id == id)
             .Select(u => new UserDto
             {
                 Id = u.Id,
@@ -74,7 +73,18 @@ public class UserService : IUserService
         };
 
         _context.Users.Add(user);
-        await _context.SaveChangesAsync();
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (
+            ex.InnerException is not null &&
+            (ex.InnerException.Message.Contains("unique", StringComparison.OrdinalIgnoreCase) ||
+             ex.InnerException.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException("Username already exists.", ex);
+        }
 
         return new UserDto
         {
@@ -86,33 +96,48 @@ public class UserService : IUserService
         };
     }
 
+    public async Task<bool> UsernameExists(string username)
+    {
+        return await _context.Users.AnyAsync(u => u.Username == username);
+    }
+
     public async Task<bool> Update(long id, UpdateUserRequest request)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && !u.Deleted);
-        if (user is null) return false;
+        var username = string.IsNullOrWhiteSpace(request.Username) ? null : request.Username;
+        var query = _context.Users.Where(u => u.Id == id);
 
-        user.Name = request.Name;
-        if (!string.IsNullOrWhiteSpace(request.Username)) user.Username = request.Username;
-
-        if (!string.IsNullOrEmpty(request.Password))
+        if (string.IsNullOrEmpty(request.Password))
         {
-            var salt = CreateSalt();
-            user.Salt = salt;
-            user.Password = HashPassword(request.Password, salt);
+            var rows = await query.ExecuteUpdateAsync(u => u
+                .SetProperty(u => u.Name, _ => request.Name)
+                .SetProperty(u => u.UpdatedAt, _ => DateTimeOffset.UtcNow)
+                .SetProperty(entity => entity.Username, _ => username)
+            );
+            return rows > 0;
         }
 
-        await _context.SaveChangesAsync();
-        return true;
+        var salt = CreateSalt();
+        var hashedPassword = HashPassword(request.Password, salt);
+
+        var updatedRows = await query.ExecuteUpdateAsync(u => u
+            .SetProperty(u => u.Name, _ => request.Name)
+            .SetProperty(u => u.UpdatedAt, _ => DateTimeOffset.UtcNow)
+            .SetProperty(entity => entity.Username, _ => username)
+            .SetProperty(u => u.Salt, _ => salt)
+            .SetProperty(u => u.Password, _ => hashedPassword)
+        );
+
+        return updatedRows > 0;
     }
 
     public async Task<bool> Delete(long id)
     {
-        var user = await _context.Users.FirstOrDefaultAsync(u => u.Id == id && !u.Deleted);
-        if (user is null) return false;
-
-        user.Deleted = true;
-        await _context.SaveChangesAsync();
-        return true;
+        var rows = await _context.Users.Where(u => u.Id == id)
+            .ExecuteUpdateAsync(u => u
+                .SetProperty(u => u.Deleted, _ => true)
+                .SetProperty(u => u.UpdatedAt, _ => DateTimeOffset.UtcNow)
+            );
+        return rows > 0;
     }
 
     private static string CreateSalt()

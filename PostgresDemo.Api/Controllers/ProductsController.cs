@@ -20,7 +20,7 @@ public class ProductsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<ActionResult<PagedResult<ProductDto>>> GetAll(int page = 1, int pageSize = 20)
+    public async Task<ActionResult<PagedResult<ProductListDto>>> GetAll(int page = 1, int pageSize = 20)
     {
         var result = await _service.GetAll(page, pageSize);
         return Ok(result);

@@ -31,6 +31,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("NOW()").IsRequired();
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("NOW()").IsRequired();
             entity.Property(e => e.Deleted).HasColumnName("deleted").HasDefaultValueSql("FALSE").IsRequired();
+            entity.HasQueryFilter(e => !e.Deleted);
         });
 
         modelBuilder.Entity<Product>(entity =>
@@ -44,6 +45,7 @@ public class ApplicationDbContext : DbContext
             entity.Property(e => e.CreatedAt).HasColumnName("created_at").HasDefaultValueSql("NOW()").IsRequired();
             entity.Property(e => e.UpdatedAt).HasColumnName("updated_at").HasDefaultValueSql("NOW()").IsRequired();
             entity.Property(e => e.Deleted).HasColumnName("deleted").HasDefaultValueSql("FALSE").IsRequired();
+            entity.HasQueryFilter(e => !e.Deleted);
         });
     }
 

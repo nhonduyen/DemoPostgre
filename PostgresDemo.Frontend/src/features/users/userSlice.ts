@@ -30,15 +30,22 @@ export const fetchUsers = createAsyncThunk(
   }
 );
 
-export const createUser = createAsyncThunk('users/create', async (name: string) => {
-  const response = await api.post<User>('/users', { name });
-  return response.data;
-});
+export const createUser = createAsyncThunk(
+  'users/create',
+  async ({ name, username, password }: { name: string; username: string; password: string }) => {
+    const response = await api.post<User>('/users', { name, username, password });
+    return response.data;
+  }
+);
 
 export const updateUser = createAsyncThunk(
   'users/update',
-  async ({ id, name }: { id: string; name: string }) => {
-    const response = await api.put<User>(`/users/${id}`, { name });
+  async ({ id, name, username, password }: { id: string; name: string; username?: string; password?: string }) => {
+    const body: { name: string; username?: string; password?: string } = { name };
+    if (username) body.username = username;
+    if (password) body.password = password;
+
+    const response = await api.put<User>(`/users/${id}`, body);
     return response.data;
   }
 );
