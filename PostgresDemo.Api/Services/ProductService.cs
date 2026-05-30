@@ -80,7 +80,7 @@ public class ProductService : IProductService
         };
     }
 
-    public async Task<bool> Update(long id, UpdateProductRequest request)
+    public async Task<ProductDto?> Update(long id, UpdateProductRequest request)
     {
         var rows = await _context.Products.Where(p => p.Id == id)
             .ExecuteUpdateAsync(p => p
@@ -89,7 +89,13 @@ public class ProductService : IProductService
                 .SetProperty(p => p.Description, _ => request.Description)
                 .SetProperty(p => p.UpdatedAt, _ => DateTimeOffset.UtcNow)
             );
-        return rows > 0;
+        
+        if (rows == 0)
+        {
+            return null;
+        }
+
+        return await GetById(id);
     }
 
     public async Task<bool> Delete(long id)

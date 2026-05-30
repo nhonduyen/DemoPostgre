@@ -101,33 +101,40 @@ public class UserService : IUserService
         return await _context.Users.AnyAsync(u => u.Username == username);
     }
 
-    public async Task<bool> Update(long id, UpdateUserRequest request)
+    public async Task<UserDto?> Update(long id, UpdateUserRequest request)
     {
         var username = string.IsNullOrWhiteSpace(request.Username) ? null : request.Username;
         var query = _context.Users.Where(u => u.Id == id);
 
+        int updatedRows;
         if (string.IsNullOrEmpty(request.Password))
         {
-            var rows = await query.ExecuteUpdateAsync(u => u
+            updatedRows = await query.ExecuteUpdateAsync(u => u
                 .SetProperty(u => u.Name, _ => request.Name)
                 .SetProperty(u => u.UpdatedAt, _ => DateTimeOffset.UtcNow)
                 .SetProperty(entity => entity.Username, _ => username)
             );
-            return rows > 0;
+        }
+        else
+        {
+            var salt = CreateSalt();
+            var hashedPassword = HashPassword(request.Password, salt);
+
+            updatedRows = await query.ExecuteUpdateAsync(u => u
+                .SetProperty(u => u.Name, _ => request.Name)
+                .SetProperty(u => u.UpdatedAt, _ => DateTimeOffset.UtcNow)
+                .SetProperty(entity => entity.Username, _ => username)
+                .SetProperty(u => u.Salt, _ => salt)
+                .SetProperty(u => u.Password, _ => hashedPassword)
+            );
         }
 
-        var salt = CreateSalt();
-        var hashedPassword = HashPassword(request.Password, salt);
+        if (updatedRows == 0)
+        {
+            return null;
+        }
 
-        var updatedRows = await query.ExecuteUpdateAsync(u => u
-            .SetProperty(u => u.Name, _ => request.Name)
-            .SetProperty(u => u.UpdatedAt, _ => DateTimeOffset.UtcNow)
-            .SetProperty(entity => entity.Username, _ => username)
-            .SetProperty(u => u.Salt, _ => salt)
-            .SetProperty(u => u.Password, _ => hashedPassword)
-        );
-
-        return updatedRows > 0;
+        return await GetById(id);
     }
 
     public async Task<bool> Delete(long id)

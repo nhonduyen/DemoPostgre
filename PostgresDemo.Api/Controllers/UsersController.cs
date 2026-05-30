@@ -67,10 +67,10 @@ public class UsersController : ControllerBase
     }
 
     [HttpPut("{id:long}")]
-    public async Task<IActionResult> Update(long id, UpdateUserRequest request)
+    public async Task<ActionResult<UserDto>> Update(long id, UpdateUserRequest request)
     {
-        var ok = await _service.Update(id, request);
-        return ok ? NoContent() : NotFound();
+        var dto = await _service.Update(id, request);
+        return dto is null ? NotFound() : Ok(dto);
     }
 
     

@@ -41,10 +41,10 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPut("{id:long}")]
-    public async Task<IActionResult> Update(long id, UpdateProductRequest request)
+    public async Task<ActionResult<ProductDto>> Update(long id, UpdateProductRequest request)
     {
-        var ok = await _service.Update(id, request);
-        return ok ? NoContent() : NotFound();
+        var dto = await _service.Update(id, request);
+        return dto is null ? NotFound() : Ok(dto);
     }
 
     [HttpDelete("{id:long}")]
