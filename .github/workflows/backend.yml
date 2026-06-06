@@ -12,6 +12,15 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
+    - name: Verify required secrets
+      run: |
+        echo "Checking required secrets..."
+        missing=0
+        if [ -n "${{ secrets.SERVER_HOST }}" ]; then echo "SERVER_HOST: set"; else echo "SERVER_HOST: NOT SET"; missing=1; fi
+        if [ -n "${{ secrets.SERVER_USER }}" ]; then echo "SERVER_USER: set"; else echo "SERVER_USER: NOT SET"; missing=1; fi
+        if [ -n "${{ secrets.SERVER_SSH_KEY }}" ]; then echo "SERVER_SSH_KEY: set"; else echo "SERVER_SSH_KEY: NOT SET"; missing=1; fi
+        if [ $missing -ne 0 ]; then echo "One or more required secrets are missing. Failing job."; exit 1; fi
+
     - uses: actions/setup-dotnet@v4
       with:
         dotnet-version: 8.0.x
