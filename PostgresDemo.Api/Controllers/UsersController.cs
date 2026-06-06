@@ -79,6 +79,6 @@ public class UsersController : ControllerBase
     public async Task<IActionResult> Delete(long id)
     {
         var ok = await _service.Delete(id);
-        return ok ? NoContent() : NotFound();
+        return ok ? NoContent() : NotFound(); // return 204 No Content if deleted, 404 Not Found if user doesn't exist
     }
 }
