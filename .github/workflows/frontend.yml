@@ -17,7 +17,7 @@ jobs:
         node-version: 24.x
 
     - run: |
-        cd frontend/ReactApp
+        cd PostgresDemo.Frontend
         npm ci
         npm run build
 

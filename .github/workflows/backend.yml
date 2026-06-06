@@ -17,7 +17,7 @@ jobs:
         dotnet-version: 8.0.x
 
     - run: |
-        dotnet publish backend/MyApi \
+        dotnet publish PostgresDemo.Api \
         -c Release \
         -o publish
 
