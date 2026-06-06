@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy Frontend
 
 on:
   push:
@@ -10,6 +10,10 @@ jobs:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
+
+      - name: Create env file
+        run: |
+          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" > PostgresDemo.Frontend/.env.production
 
       - uses: actions/setup-node@v4
         with:
@@ -23,5 +27,5 @@ jobs:
 
       - name: Copy to web root
         run: |
-          sudo rm -rf /var/www/myapp/react/*
-          sudo cp -r PostgresDemo.Frontend/dist/* /var/www/myapp/react/
+          rm -rf /var/www/myapp/react/*
+          cp -r PostgresDemo.Frontend/dist/* /var/www/myapp/react/
