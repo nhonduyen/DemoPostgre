@@ -1,12 +1,13 @@
-name: Deploy API
+name: Deploy Backend
 
 on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 jobs:
-  deploy-api:
+  deploy-backend:
     runs-on: self-hosted
     steps:
       - uses: actions/checkout@v4
