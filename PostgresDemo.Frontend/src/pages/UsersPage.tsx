@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/api';
 import { useAppDispatch, useAppSelector } from '../hooks';
-import { createUser, deleteUser, fetchUsers, updateUser } from '../features/users/userSlice';
+import { createUser, createUsersBulk, deleteUser, fetchUsers, updateUser } from '../features/users/userSlice';
 
 function UsersPage() {
   const dispatch = useAppDispatch();
@@ -20,10 +20,62 @@ function UsersPage() {
   const [editingUsernameExists, setEditingUsernameExists] = useState(false);
   const [editingUsernameChecking, setEditingUsernameChecking] = useState(false);
   const [editingError, setEditingError] = useState('');
+  const [generateCount, setGenerateCount] = useState('5');
+  const [generating, setGenerating] = useState(false);
+  const [generateMessage, setGenerateMessage] = useState('');
+
+  const sampleFirstNames = ['Ava', 'Liam', 'Mia', 'Noah', 'Emma', 'Ethan', 'Sophia', 'Mason', 'Olivia', 'Logan'];
+  const sampleLastNames = ['Nguyen', 'Tran', 'Le', 'Pham', 'Hoang', 'Pham', 'Ly', 'Do', 'Dang', 'Mai'];
+
+  const getSampleUser = (index: number) => {
+    const first = sampleFirstNames[index % sampleFirstNames.length];
+    const last = sampleLastNames[(index + 3) % sampleLastNames.length];
+    const seed = `${Date.now().toString().slice(-5)}${index}`;
+    return {
+      name: `${first} ${last}`,
+      username: `${first.toLowerCase()}${last.toLowerCase()}${seed}`,
+      password: `DemoPass${Math.floor(1000 + Math.random() * 9000)}`,
+    };
+  };
+
+  const handleGenerateUsers = async () => {
+    const count = Number(generateCount);
+    if (!count || count < 1 || count > 50) {
+      setGenerateMessage('Enter a number between 1 and 50.');
+      return;
+    }
+
+    setGenerating(true);
+    setGenerateMessage(`Creating ${count} sample users...`);
+    const users = Array.from({ length: count }, (_, i) => getSampleUser(i));
+    let created = 0;
+
+    try {
+      const resultAction = await dispatch(createUsersBulk({ users }));
+      if (createUsersBulk.fulfilled.match(resultAction)) {
+        created = resultAction.payload.length;
+      }
+      await dispatch(fetchUsers({ page: 1, pageSize }));
+      setGenerateMessage(`Created ${created} sample user${created === 1 ? '' : 's'}.`);
+      setGenerateCount('5');
+    } catch {
+      setGenerateMessage(`Created ${created} sample user${created === 1 ? '' : 's'} before an error occurred.`);
+    } finally {
+      setGenerating(false);
+    }
+  };
 
   useEffect(() => {
     dispatch(fetchUsers({ page: 1, pageSize }));
   }, [dispatch, pageSize]);
+
+  const totalUserPages = Math.max(1, Math.ceil(total / pageSize));
+  const handleUserPageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalUserPages) {
+      return;
+    }
+    dispatch(fetchUsers({ page: newPage, pageSize }));
+  };
 
   const checkUsernameExists = async (value: string, originalUsername?: string) => {
     const trimmed = value.trim();
@@ -183,6 +235,29 @@ function UsersPage() {
             </button>
             {formError && <div className="text-sm text-rose-600">{formError}</div>}
           </div>
+
+          <div className="mt-8 rounded-3xl border border-slate-200 bg-slate-50 p-5">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+              <input
+                value={generateCount}
+                onChange={(event) => setGenerateCount(event.target.value)}
+                type="number"
+                min="1"
+                max="50"
+                placeholder="Number of users"
+                className="w-full rounded-2xl border border-slate-300 px-4 py-3 shadow-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+              />
+              <button
+                onClick={handleGenerateUsers}
+                disabled={generating}
+                className="w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+              >
+                {generating ? 'Generating users…' : 'Generate sample users'}
+              </button>
+            </div>
+            <div className="mt-3 text-sm text-slate-500">Create sample users with unique usernames for testing.</div>
+            {generateMessage && <div className="mt-2 text-sm text-slate-700">{generateMessage}</div>}
+          </div>
         </div>
       </section>
 
@@ -267,7 +342,25 @@ function UsersPage() {
               </div>
             </div>
           ))}
-        </div>
+          <div className="mt-6 flex flex-col items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:flex-row">
+            <button
+              onClick={() => handleUserPageChange(page - 1)}
+              disabled={page <= 1 || status === 'loading'}
+              className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Previous
+            </button>
+            <div className="text-sm text-slate-600">
+              Page {page} of {totalUserPages}
+            </div>
+            <button
+              onClick={() => handleUserPageChange(page + 1)}
+              disabled={page >= totalUserPages || status === 'loading'}
+              className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Next
+            </button>
+          </div>        </div>
       </section>
     </div>
   );

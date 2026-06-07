@@ -66,6 +66,29 @@ public class UsersController : ControllerBase
         }
     }
 
+    [HttpPost("bulk")]
+    public async Task<ActionResult<IReadOnlyList<UserDto>>> CreateBulk(BulkCreateUserRequest request)
+    {
+        if (request.Users == null || !request.Users.Any())
+        {
+            return BadRequest("At least one user is required.");
+        }
+
+        try
+        {
+            var dtos = await _service.CreateBulk(request.Users);
+            return Ok(dtos);
+        }
+        catch (InvalidOperationException ex)
+        {
+            if (ex.Message.StartsWith("Duplicate usernames in request", StringComparison.OrdinalIgnoreCase))
+            {
+                return BadRequest(ex.Message);
+            }
+            return Conflict(ex.Message);
+        }
+    }
+
     [HttpPut("{id:long}")]
     public async Task<ActionResult<UserDto>> Update(long id, UpdateUserRequest request)
     {

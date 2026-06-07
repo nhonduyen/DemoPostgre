@@ -38,6 +38,14 @@ export const createProduct = createAsyncThunk(
   }
 );
 
+export const createProductsBulk = createAsyncThunk(
+  'products/createBulk',
+  async (payload: { products: Array<{ name: string; price: number; description?: string }> }) => {
+    const response = await api.post<Product[]>('/products/bulk', payload);
+    return response.data;
+  }
+);
+
 export const updateProduct = createAsyncThunk(
   'products/update',
   async (payload: { id: string; name: string; price: number; description?: string }) => {
@@ -79,6 +87,10 @@ const productsSlice = createSlice({
       .addCase(createProduct.fulfilled, (state, action: PayloadAction<Product>) => {
         state.items.unshift(action.payload);
         state.total += 1;
+      })
+      .addCase(createProductsBulk.fulfilled, (state, action: PayloadAction<Product[]>) => {
+        state.items = [...action.payload, ...state.items];
+        state.total += action.payload.length;
       })
       .addCase(updateProduct.fulfilled, (state, action: PayloadAction<Product>) => {
         const index = state.items.findIndex((item) => item.id === action.payload.id);

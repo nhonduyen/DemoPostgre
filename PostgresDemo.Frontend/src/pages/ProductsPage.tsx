@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAppDispatch, useAppSelector } from '../hooks';
-import { createProduct, deleteProduct, fetchProducts, updateProduct } from '../features/products/productSlice';
+import { createProduct, createProductsBulk, deleteProduct, fetchProducts, updateProduct } from '../features/products/productSlice';
 
 function ProductsPage() {
   const dispatch = useAppDispatch();
@@ -12,6 +12,70 @@ function ProductsPage() {
   const [editingName, setEditingName] = useState('');
   const [editingPrice, setEditingPrice] = useState('');
   const [editingDescription, setEditingDescription] = useState('');
+  const [generateCount, setGenerateCount] = useState('5');
+  const [generating, setGenerating] = useState(false);
+  const [generateMessage, setGenerateMessage] = useState('');
+
+  const sampleProductNames = ['Wireless Mouse', 'Coffee Mug', 'Desk Lamp', 'Bluetooth Speaker', 'Notebook', 'Travel Backpack', 'Water Bottle', 'Desk Plant', 'Phone Stand', 'Noise Cancelling Headphones'];
+  const sampleProductDescriptions = [
+    'A reliable everyday essential.',
+    'Designed for comfort and style.',
+    'Perfect for remote work and home office.',
+    'High quality and built to last.',
+    'A great gift for friends and family.',
+    'Compact, practical, and easy to use.',
+    'Made from premium materials.',
+    'Modern design with excellent performance.',
+    'Clean lines and powerful features.',
+    'Simple, durable, and affordable.',
+  ];
+
+  const getSampleProduct = (index: number) => {
+    const nameIndex = index % sampleProductNames.length;
+    const descriptionIndex = (index + 2) % sampleProductDescriptions.length;
+    const baseName = sampleProductNames[nameIndex];
+    return {
+      name: `${baseName} ${Date.now().toString().slice(-4)}${index}`,
+      price: Number((Math.random() * 190 + 10).toFixed(2)),
+      description: sampleProductDescriptions[descriptionIndex],
+    };
+  };
+
+  const handleGenerateProducts = async () => {
+    const count = Number(generateCount);
+    if (!count || count < 1 || count > 50) {
+      setGenerateMessage('Enter a number between 1 and 50.');
+      return;
+    }
+
+    setGenerating(true);
+    setGenerateMessage(`Creating ${count} sample products...`);
+    const products = Array.from({ length: count }, (_, i) => getSampleProduct(i));
+    let created = 0;
+
+    try {
+      const resultAction = await dispatch(createProductsBulk({ products }));
+      if (createProductsBulk.fulfilled.match(resultAction)) {
+        created = resultAction.payload.length;
+      }
+      await dispatch(fetchProducts({ page: 1, pageSize }));
+      setGenerateMessage(`Created ${created} sample product${created === 1 ? '' : 's'}.`);
+      setGenerateCount('5');
+    } catch {
+      setGenerateMessage(`Created ${created} sample product${created === 1 ? '' : 's'} before an error occurred.`);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const totalProductPages = Math.max(1, Math.ceil(total / pageSize));
+  const handleProductPageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalProductPages) {
+      return;
+    }
+
+    dispatch(fetchProducts({ page: newPage, pageSize }));
+  };
 
   useEffect(() => {
     dispatch(fetchProducts({ page: 1, pageSize }));
@@ -90,6 +154,29 @@ function ProductsPage() {
             Create product
           </button>
         </div>
+
+        <div className="mt-8 rounded-3xl border border-slate-200 bg-slate-50 p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <input
+              value={generateCount}
+              onChange={(event) => setGenerateCount(event.target.value)}
+              type="number"
+              min="1"
+              max="50"
+              placeholder="Number of products"
+              className="w-full rounded-2xl border border-slate-300 px-4 py-3 shadow-sm outline-none focus:border-slate-900 focus:ring-2 focus:ring-slate-200"
+            />
+            <button
+              onClick={handleGenerateProducts}
+              disabled={generating}
+              className="w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+            >
+              {generating ? 'Generating products…' : 'Generate sample products'}
+            </button>
+          </div>
+          <div className="mt-3 text-sm text-slate-500">Create sample products with price and description for testing.</div>
+          {generateMessage && <div className="mt-2 text-sm text-slate-700">{generateMessage}</div>}
+        </div>
       </section>
 
       <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
@@ -155,7 +242,25 @@ function ProductsPage() {
               </div>
             </div>
           ))}
-        </div>
+          <div className="mt-6 flex flex-col items-center justify-between gap-3 rounded-3xl border border-slate-200 bg-slate-50 p-4 sm:flex-row">
+            <button
+              onClick={() => handleProductPageChange(page - 1)}
+              disabled={page <= 1 || status === 'loading'}
+              className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Previous
+            </button>
+            <div className="text-sm text-slate-600">
+              Page {page} of {totalProductPages}
+            </div>
+            <button
+              onClick={() => handleProductPageChange(page + 1)}
+              disabled={page >= totalProductPages || status === 'loading'}
+              className="rounded-2xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              Next
+            </button>
+          </div>        </div>
       </section>
     </div>
   );

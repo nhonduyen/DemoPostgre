@@ -7,6 +7,11 @@ public sealed class CreateUserRequest
     public string? Password { get; set; }
 }
 
+public sealed class BulkCreateUserRequest
+{
+    public IEnumerable<CreateUserRequest> Users { get; set; } = Array.Empty<CreateUserRequest>();
+}
+
 public sealed class UpdateUserRequest
 {
     public string Name { get; set; } = string.Empty;
@@ -19,6 +24,11 @@ public sealed class CreateProductRequest
     public string Name { get; set; } = string.Empty;
     public decimal Price { get; set; }
     public string? Description { get; set; }
+}
+
+public sealed class BulkCreateProductRequest
+{
+    public IEnumerable<CreateProductRequest> Products { get; set; } = Array.Empty<CreateProductRequest>();
 }
 
 public sealed class UpdateProductRequest

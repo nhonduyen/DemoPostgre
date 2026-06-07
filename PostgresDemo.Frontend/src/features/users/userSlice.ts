@@ -38,6 +38,14 @@ export const createUser = createAsyncThunk(
   }
 );
 
+export const createUsersBulk = createAsyncThunk(
+  'users/createBulk',
+  async (payload: { users: Array<{ name: string; username: string; password: string }> }) => {
+    const response = await api.post<User[]>('/users/bulk', payload);
+    return response.data;
+  }
+);
+
 export const updateUser = createAsyncThunk(
   'users/update',
   async ({ id, name, username, password }: { id: string; name: string; username?: string; password?: string }) => {
@@ -79,6 +87,10 @@ const usersSlice = createSlice({
       .addCase(createUser.fulfilled, (state, action: PayloadAction<User>) => {
         state.items.unshift(action.payload);
         state.total += 1;
+      })
+      .addCase(createUsersBulk.fulfilled, (state, action: PayloadAction<User[]>) => {
+        state.items = [...action.payload, ...state.items];
+        state.total += action.payload.length;
       })
       .addCase(updateUser.fulfilled, (state, action: PayloadAction<User>) => {
         const index = state.items.findIndex((item) => item.id === action.payload.id);

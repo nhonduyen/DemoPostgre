@@ -40,6 +40,18 @@ public class ProductsController : ControllerBase
         return CreatedAtAction(nameof(GetById), new { id = dto.Id }, dto);
     }
 
+    [HttpPost("bulk")]
+    public async Task<ActionResult<IReadOnlyList<ProductDto>>> CreateBulk(BulkCreateProductRequest request)
+    {
+        if (request.Products == null || !request.Products.Any())
+        {
+            return BadRequest("At least one product is required.");
+        }
+
+        var dtos = await _service.CreateBulk(request.Products);
+        return Ok(dtos);
+    }
+
     [HttpPut("{id:long}")]
     public async Task<ActionResult<ProductDto>> Update(long id, UpdateProductRequest request)
     {

@@ -1,3 +1,4 @@
+using IdGen;
 using Microsoft.EntityFrameworkCore;
 using PostgresDemo.Api.Data;
 using PostgresDemo.Api.Entities;
@@ -10,10 +11,12 @@ namespace PostgresDemo.Api.Services;
 public class UserService : IUserService
 {
     private readonly ApplicationDbContext _context;
+    private readonly IdGenerator _idGenerator;
 
-    public UserService(ApplicationDbContext context)
+    public UserService(ApplicationDbContext context, IdGenerator idGenerator)
     {
         _context = context;
+        _idGenerator = idGenerator;
     }
 
     public async Task<PagedResult<UserListDto>> GetAll(int page, int pageSize)
@@ -94,6 +97,69 @@ public class UserService : IUserService
             CreatedAt = user.CreatedAt,
             UpdatedAt = user.UpdatedAt
         };
+    }
+
+    public async Task<IReadOnlyList<UserDto>> CreateBulk(IEnumerable<CreateUserRequest> requests)
+    {
+        var users = requests.Select(request =>
+        {
+            var username = string.IsNullOrWhiteSpace(request.Username) ? request.Name : request.Username;
+            var salt = CreateSalt();
+
+            return new User
+            {
+                Id = _idGenerator.CreateId(),
+                Name = request.Name,
+                Username = username,
+                Salt = salt,
+                Password = HashPassword(request.Password ?? string.Empty, salt)
+            };
+        }).ToList();
+
+        var duplicateUsernames = users
+            .GroupBy(u => u.Username, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        if (duplicateUsernames.Any())
+        {
+            throw new InvalidOperationException($"Duplicate usernames in request: {string.Join(", ", duplicateUsernames)}.");
+        }
+
+        var usernames = users.Select(u => u.Username).ToList();
+        var existingUsernames = await _context.Users
+            .Where(u => usernames.Contains(u.Username))
+            .Select(u => u.Username)
+            .ToListAsync();
+
+        if (existingUsernames.Any())
+        {
+            throw new InvalidOperationException($"Username already exists: {string.Join(", ", existingUsernames)}.");
+        }
+
+        _context.Users.AddRange(users);
+
+        try
+        {
+            await _context.SaveChangesAsync();
+        }
+        catch (DbUpdateException ex) when (
+            ex.InnerException is not null &&
+            (ex.InnerException.Message.Contains("unique", StringComparison.OrdinalIgnoreCase) ||
+             ex.InnerException.Message.Contains("duplicate", StringComparison.OrdinalIgnoreCase)))
+        {
+            throw new InvalidOperationException("Username already exists.", ex);
+        }
+
+        return users.Select(user => new UserDto
+        {
+            Id = user.Id,
+            Name = user.Name,
+            Username = user.Username,
+            CreatedAt = user.CreatedAt,
+            UpdatedAt = user.UpdatedAt
+        }).ToList();
     }
 
     public async Task<bool> UsernameExists(string username)
