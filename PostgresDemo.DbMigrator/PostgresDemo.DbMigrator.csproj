@@ -15,12 +15,6 @@
     <EmbeddedResource Include="Scripts\**\*.sql" />
   </ItemGroup>
 	
-  <ItemGroup>
-    <EmbeddedResource Remove="Scripts\AlwaysRun\Functions\fn_next_snowflake_id.sql" />
-    <EmbeddedResource Remove="Scripts\AlwaysRun\Views\vw_app_users.sql" />
-    <EmbeddedResource Remove="Scripts\AlwaysRun\Views\vw_products.sql" />
-    <EmbeddedResource Remove="Scripts\RunOnce\20260611000001_seed_app_users_admin.sql" />
-  </ItemGroup>
 
   <ItemGroup>
     <Folder Include="Scripts\AlwaysRun\Indexes\" />
