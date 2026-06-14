@@ -11,35 +11,21 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-db-migrator:
+  deploy-db-migrator:
     runs-on: self-hosted
+    environment: production
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Clean previous publish output
+        run: rm -rf publish
 
       - name: Restore DbMigrator
         run: dotnet restore PostgresDemo.DbMigrator/PostgresDemo.DbMigrator.csproj
 
       - name: Publish DbMigrator
         run: dotnet publish PostgresDemo.DbMigrator/PostgresDemo.DbMigrator.csproj -c Release -o publish/db-migrator
-
-      - name: Upload build artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: db-migrator
-          path: publish/db-migrator
-
-  deploy-db-migrator:
-    needs: build-db-migrator
-    runs-on: self-hosted
-    environment: production
-
-    steps:
-      - name: Download build artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: db-migrator
-          path: publish/db-migrator
 
       - name: Run DB migrations
         run: dotnet publish/db-migrator/PostgresDemo.DbMigrator.dll
