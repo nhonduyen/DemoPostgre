@@ -4,6 +4,10 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'PostgresDemo.Api/**'
+      - '.github/workflows/deploy-backend.yml'
+      - 'PostgresDemo.sln'
   workflow_dispatch:
 
 jobs:

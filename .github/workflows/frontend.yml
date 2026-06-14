@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - main
+    paths:
+      - 'PostgresDemo.Frontend/**'
+      - '.github/workflows/deploy-frontend.yml'
   workflow_dispatch:
 
 jobs:

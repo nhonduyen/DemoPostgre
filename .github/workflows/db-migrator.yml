@@ -33,3 +33,20 @@ jobs:
         with:
           name: db-migrator
           path: publish/db-migrator
+
+  deploy-db-migrator:
+    needs: build-db-migrator
+    runs-on: self-hosted
+    environment: production
+
+    steps:
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: db-migrator
+          path: publish/db-migrator
+
+      - name: Run DB migrations
+        run: dotnet publish/db-migrator/PostgresDemo.DbMigrator.dll
+        env:
+          ConnectionStrings__Default: ${{ secrets.DB_CONNECTION_STRING }}
