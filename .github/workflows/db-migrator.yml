@@ -1,0 +1,35 @@
+name: Deploy DB
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'PostgresDemo.DbMigrator/**'
+      - '.github/workflows/db-migrator.yml'
+      - 'PostgresDemo.sln'
+  workflow_dispatch:
+
+jobs:
+  build-db-migrator:
+    runs-on: self-hosted
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+
+      - name: Restore DbMigrator
+        run: dotnet restore PostgresDemo.DbMigrator/PostgresDemo.DbMigrator.csproj
+
+      - name: Publish DbMigrator
+        run: dotnet publish PostgresDemo.DbMigrator/PostgresDemo.DbMigrator.csproj -c Release -o publish/db-migrator
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-migrator
+          path: publish/db-migrator

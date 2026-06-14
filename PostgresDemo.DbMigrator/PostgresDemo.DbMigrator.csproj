@@ -1,0 +1,30 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="dbup-postgresql" Version="7.0.1" />
+  </ItemGroup>
+	
+  <ItemGroup>
+    <EmbeddedResource Include="Scripts\**\*.sql" />
+  </ItemGroup>
+	
+  <ItemGroup>
+    <EmbeddedResource Remove="Scripts\AlwaysRun\Functions\fn_next_snowflake_id.sql" />
+    <EmbeddedResource Remove="Scripts\AlwaysRun\Views\vw_app_users.sql" />
+    <EmbeddedResource Remove="Scripts\AlwaysRun\Views\vw_products.sql" />
+    <EmbeddedResource Remove="Scripts\RunOnce\20260611000001_seed_app_users_admin.sql" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Scripts\AlwaysRun\Indexes\" />
+    <Folder Include="Scripts\AlwaysRun\Triggers\" />
+  </ItemGroup>
+
+</Project>
