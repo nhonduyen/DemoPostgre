@@ -1,6 +1,7 @@
 ﻿using DbUp;
 using DbUp.Engine;
 using DbUp.Support;
+using PostgresDemo.DbMigrator;
 using System.Reflection;
 
 var connectionString = Environment.GetEnvironmentVariable("DB_CONNECTION")
@@ -26,6 +27,7 @@ var upgrader = DeployChanges.To
         s => s.Contains(".AlwaysRun."),
         new SqlScriptOptions { ScriptType = ScriptType.RunAlways })
     .WithVariable("env", Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT"))
+    .WithScriptNameComparer(new RunOnceFirstComparer())
     .WithTransactionPerScript()
     .LogToConsole()
     .Build();
