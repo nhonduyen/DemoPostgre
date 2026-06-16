@@ -63,34 +63,24 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Print active environment
-        run: |
-          echo "Environment : $VITE_ENV"
-          echo "Deploy path : $DEPLOY_PATH"
+        run: echo "Deploying to $VITE_ENV"
 
-      - name: Create env file                   # ✅ uses secret, not hardcoded values
+      - name: Create env file
         run: |
-          cat > PostgresDemo.Frontend/.env.$VITE_ENV << EOF
-          VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL }}
-          VITE_APP_ENV=$VITE_ENV
-          EOF
+          echo "VITE_API_BASE_URL=${{ vars.VITE_API_BASE_URL }}" > PostgresDemo.Frontend/.env.$VITE_ENV
 
       - uses: actions/setup-node@v4
         with:
           node-version: 24.x
-          cache: 'npm'                           # ✅ cache npm to speed up installs
-          cache-dependency-path: PostgresDemo.Frontend/package-lock.json
-
-      - name: Install dependencies
-        run: npm ci
-        working-directory: PostgresDemo.Frontend
 
       - name: Build React
-        run: npm run build -- --mode $VITE_ENV  # ✅ pass mode so Vite picks up correct .env file
-        working-directory: PostgresDemo.Frontend
+        run: |
+          cd PostgresDemo.Frontend
+          npm ci
+          npm run build
 
       - name: Copy to web root
         run: |
-          mkdir -p $DEPLOY_PATH
-          rm -rf $DEPLOY_PATH/*
-          cp -r PostgresDemo.Frontend/dist/* $DEPLOY_PATH/
+          rm -rf /var/www/myapp/react/*
+          cp -r PostgresDemo.Frontend/dist/* /var/www/myapp/react/
           echo "✅ Deployed to $DEPLOY_PATH"
