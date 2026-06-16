@@ -11,9 +11,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy-db-migrator:
+  generate-script:
     runs-on: self-hosted
-    environment: production
 
     steps:
       - uses: actions/checkout@v4
@@ -27,7 +26,25 @@ jobs:
       - name: Publish DbMigrator
         run: dotnet publish PostgresDemo.DbMigrator/PostgresDemo.DbMigrator.csproj -c Release -o publish/db-migrator
 
+      - name: Generate pending migration SQL
+        run: dotnet publish/db-migrator/PostgresDemo.DbMigrator.dll generate
+        env:
+          DB_CONNECTION: ${{ secrets.DB_CONNECTION_STRING }}
+
+      - name: Write SQL to job summary
+        run: |
+          echo '## Pending Migrations' >> $GITHUB_STEP_SUMMARY
+          echo '```sql' >> $GITHUB_STEP_SUMMARY
+          cat pending-migration.sql >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  deploy-db-migrator:
+    needs: generate-script
+    runs-on: self-hosted
+    environment: production
+
+    steps:
       - name: Run DB migrations
-        run: dotnet publish/db-migrator/PostgresDemo.DbMigrator.dll
+        run: dotnet publish/db-migrator/PostgresDemo.DbMigrator.dll migrate
         env:
           DB_CONNECTION: ${{ secrets.DB_CONNECTION_STRING }}
