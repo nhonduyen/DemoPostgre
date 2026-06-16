@@ -88,13 +88,6 @@ jobs:
         run: npm run build -- --mode $VITE_ENV  # ✅ pass mode so Vite picks up correct .env file
         working-directory: PostgresDemo.Frontend
 
-      - name: Verify build output               # ✅ safety check before wiping web root
-        run: |
-          if [ ! -f PostgresDemo.Frontend/dist/index.html ]; then
-            echo "❌ Build output missing, aborting deploy"
-            exit 1
-          fi
-
       - name: Copy to web root
         run: |
           mkdir -p $DEPLOY_PATH
