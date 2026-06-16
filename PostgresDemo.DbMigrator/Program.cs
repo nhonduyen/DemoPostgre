@@ -36,26 +36,38 @@ var mode = args.LastOrDefault() ?? "migrate";
 
 if (mode == "generate")
 {
-    var scripts = upgrader.GetScriptsToExecute();
+    var allScripts = upgrader.GetScriptsToExecute();
+
+    var pendingOnce = allScripts.Where(s => s.Name.Contains(".RunOnce.")).ToList();
+    var alwaysRun = allScripts.Where(s => s.Name.Contains(".AlwaysRun.")).ToList();
+
     var outputPath = Path.Combine(Directory.GetCurrentDirectory(), "pending-migration.sql");
 
     using var writer = new StreamWriter(outputPath);
 
-    if (scripts.Count == 0)
-    {
-        writer.WriteLine("-- No pending migrations.");
-    }
+    writer.WriteLine("-- ===== NEW SCRIPTS (RunOnce) =====");
+    if (pendingOnce.Count == 0)
+        writer.WriteLine("-- None");
     else
-    {
-        foreach (var script in scripts)
+        foreach (var script in pendingOnce)
         {
-            writer.WriteLine($"-- ===== {script.Name} =====");
+            writer.WriteLine($"-- {script.Name}");
             writer.WriteLine(script.Contents);
             writer.WriteLine();
         }
-    }
 
-    Console.WriteLine($"Wrote {scripts.Count} pending script(s) to {outputPath}");
+    writer.WriteLine("-- ===== ALWAYS RUN SCRIPTS =====");
+    if (alwaysRun.Count == 0)
+        writer.WriteLine("-- None");
+    else
+        foreach (var script in alwaysRun)
+        {
+            writer.WriteLine($"-- {script.Name}");
+            writer.WriteLine(script.Contents);
+            writer.WriteLine();
+        }
+
+    Console.WriteLine($"Wrote {pendingOnce.Count} RunOnce and {alwaysRun.Count} AlwaysRun script(s) to {outputPath}");
     return;
 }
 
