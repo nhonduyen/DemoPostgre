@@ -2,22 +2,72 @@ name: Deploy Frontend
 
 on:
   push:
-    branches:
-      - main
+    branches: [dev, staging, main]
     paths:
       - 'PostgresDemo.Frontend/**'
       - '.github/workflows/deploy-frontend.yml'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Override environment (leave blank to auto-detect)'
+        required: false
+        type: choice
+        options:
+          - ''
+          - dev
+          - staging
+          - production
 
 jobs:
+  resolve-env:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set.outputs.environment }}
+      deploy_path: ${{ steps.set.outputs.deploy_path }}
+    steps:
+      - id: set
+        run: |
+          if [[ -n "${{ inputs.environment }}" ]]; then
+            ENV="${{ inputs.environment }}"
+          elif [[ "${{ github.ref_name }}" == "main" ]]; then
+            ENV="production"
+          elif [[ "${{ github.ref_name }}" == "staging" ]]; then
+            ENV="staging"
+          else
+            ENV="production"                          
+          fi
+
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+
+          case $ENV in
+            production)
+              echo "deploy_path=/var/www/myapp/react"         >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "deploy_path=/var/www/myapp-staging/react" >> $GITHUB_OUTPUT
+              ;;
+            dev)
+              echo "deploy_path=/var/www/myapp-dev/react"     >> $GITHUB_OUTPUT
+              ;;
+          esac
+
   deploy-frontend:
     runs-on: self-hosted
+    needs: resolve-env
+    environment: ${{ needs.resolve-env.outputs.environment }}
+    env:
+      DEPLOY_PATH: ${{ needs.resolve-env.outputs.deploy_path }}
+      VITE_ENV: ${{ needs.resolve-env.outputs.environment }}
+
     steps:
       - uses: actions/checkout@v4
 
+      - name: Print active environment
+        run: echo "Deploying to $VITE_ENV"
+
       - name: Create env file
         run: |
-          echo "VITE_API_BASE_URL=${{ secrets.VITE_API_BASE_URL }}" > PostgresDemo.Frontend/.env.production
+          echo "${{ vars.FRONTEND_ENV_FILE }}" > PostgresDemo.Frontend/.env.$VITE_ENV
 
       - uses: actions/setup-node@v4
         with:
@@ -31,5 +81,6 @@ jobs:
 
       - name: Copy to web root
         run: |
-          rm -rf /var/www/myapp/react/*
-          cp -r PostgresDemo.Frontend/dist/* /var/www/myapp/react/
+          rm -rf $DEPLOY_PATH/*
+          cp -r PostgresDemo.Frontend/dist/* $DEPLOY_PATH/
+          echo "✅ Deployed to $DEPLOY_PATH"
