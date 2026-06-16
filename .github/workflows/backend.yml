@@ -2,19 +2,76 @@ name: Deploy Backend
 
 on:
   push:
-    branches:
-      - main
+    branches: [dev, staging, main]
     paths:
       - 'PostgresDemo.Api/**'
       - '.github/workflows/deploy-backend.yml'
       - 'PostgresDemo.sln'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Override environment (leave blank to auto-detect)'
+        required: false
+        type: choice
+        options:
+          - ''
+          - dev
+          - staging
+          - production
 
 jobs:
+  resolve-env:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set.outputs.environment }}
+      deploy_path: ${{ steps.set.outputs.deploy_path }}
+      service_name: ${{ steps.set.outputs.service_name }}
+    steps:
+      - id: set
+        run: |
+          if [[ -n "${{ inputs.environment }}" ]]; then
+            ENV="${{ inputs.environment }}"
+          elif [[ "${{ github.ref_name }}" == "main" ]]; then
+            ENV="production"
+          elif [[ "${{ github.ref_name }}" == "staging" ]]; then
+            ENV="staging"
+          else
+            ENV="production"                       
+          fi
+
+          echo "environment=$ENV" >> $GITHUB_OUTPUT
+
+          # Map environment → deploy path & service name
+          case $ENV in
+            production)
+              echo "deploy_path=/var/www/myapp/api"        >> $GITHUB_OUTPUT
+              echo "service_name=myapi"                    >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "deploy_path=/var/www/myapp-staging/api" >> $GITHUB_OUTPUT
+              echo "service_name=myapi-staging"             >> $GITHUB_OUTPUT
+              ;;
+            dev)
+              echo "deploy_path=/var/www/myapp-dev/api"    >> $GITHUB_OUTPUT
+              echo "service_name=myapi-dev"                >> $GITHUB_OUTPUT
+              ;;
+          esac
+
   deploy-backend:
     runs-on: self-hosted
+    needs: resolve-env
+    environment: ${{ needs.resolve-env.outputs.environment }}
+    env:
+      DEPLOY_PATH: ${{ needs.resolve-env.outputs.deploy_path }}
+      SERVICE_NAME: ${{ needs.resolve-env.outputs.service_name }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Print active environment
+        run: |
+          echo "Environment : ${{ needs.resolve-env.outputs.environment }}"
+          echo "Deploy path : $DEPLOY_PATH"
+          echo "Service     : $SERVICE_NAME"
 
       - name: Publish API
         run: |
@@ -22,10 +79,29 @@ jobs:
             -c Release \
             -o publish
 
+      - name: Verify publish output           # ✅ safety check before wiping
+        run: |
+          if [ ! -f publish/PostgresDemo.Api.dll ]; then
+            echo "❌ Publish output missing, aborting deploy"
+            exit 1
+          fi
+
+      - name: Write env file                  # ✅ inject secrets from GitHub environment
+        run: |
+          mkdir -p $DEPLOY_PATH
+          echo "${{ secrets.BACKEND_ENV_FILE }}" > $DEPLOY_PATH/.env
+          chmod 600 $DEPLOY_PATH/.env
+
       - name: Copy to web root
         run: |
-          rm -rf /var/www/myapp/api/*
-          cp -r publish/* /var/www/myapp/api/
+          mkdir -p $DEPLOY_PATH
+          rm -rf $DEPLOY_PATH/*
+          cp -r publish/* $DEPLOY_PATH/
 
       - name: Restart service
-        run: sudo systemctl restart myapi
+        run: |
+          sudo systemctl restart $SERVICE_NAME
+          sleep 3
+          sudo systemctl is-active --quiet $SERVICE_NAME \
+            && echo "✅ Service started" \
+            || (echo "❌ Service failed to start" && sudo journalctl -u $SERVICE_NAME -n 50 && exit 1)

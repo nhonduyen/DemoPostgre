@@ -2,20 +2,52 @@ name: Deploy DB
 
 on:
   push:
-    branches:
-      - main
+    branches: [dev, staging, main]
     paths:
       - 'PostgresDemo.DbMigrator/**'
       - '.github/workflows/db-migrator.yml'
       - 'PostgresDemo.sln'
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Override environment (leave blank to auto-detect)'
+        required: false
+        type: choice
+        options:
+          - ''
+          - dev
+          - staging
+          - production
 
 jobs:
+  resolve-env:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.set.outputs.environment }}
+    steps:
+      - id: set
+        run: |
+          # Use manual input if provided, otherwise detect from branch
+          if [[ -n "${{ inputs.environment }}" ]]; then
+            echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref_name }}" == "main" ]]; then
+            echo "environment=production" >> $GITHUB_OUTPUT
+          elif [[ "${{ github.ref_name }}" == "staging" ]]; then
+            echo "environment=staging" >> $GITHUB_OUTPUT
+          else
+            echo "environment=production" >> $GITHUB_OUTPUT
+          fi
+          
   generate-script:
     runs-on: self-hosted
+    needs: resolve-env
+    environment: ${{ needs.resolve-env.outputs.environment }}
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Print active environment
+        run: echo "Deploying to ${{ needs.resolve-env.outputs.environment }}"
 
       - name: Clean previous publish output
         run: rm -rf publish
@@ -45,7 +77,7 @@ jobs:
   deploy-db-migrator:
     needs: generate-script
     runs-on: self-hosted
-    environment: production
+    environment: ${{ needs.resolve-env.outputs.environment }}
 
     steps:
       - name: Run DB migrations
