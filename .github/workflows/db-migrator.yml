@@ -34,9 +34,13 @@ jobs:
       - name: Write SQL to job summary
         run: |
           echo '## Pending Migrations' >> $GITHUB_STEP_SUMMARY
-          echo '```sql' >> $GITHUB_STEP_SUMMARY
-          cat pending-migration.sql >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          if [ -f pending-migration.sql ]; then
+            echo '```sql' >> $GITHUB_STEP_SUMMARY
+            cat pending-migration.sql >> $GITHUB_STEP_SUMMARY
+            echo '```' >> $GITHUB_STEP_SUMMARY
+          else
+            echo 'pending-migration.sql not found' >> $GITHUB_STEP_SUMMARY
+          fi
 
   deploy-db-migrator:
     needs: generate-script

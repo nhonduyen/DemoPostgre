@@ -11,7 +11,7 @@ if (string.IsNullOrWhiteSpace(connectionString))
 {
     Console.Error.WriteLine("Connection string not provided. Set DB_CONNECTION env var or pass as first argument.");
     Environment.Exit(1);
-    return; // unreachable, but keeps compiler happy with nullable
+    return;
 }
 
 EnsureDatabase.For.PostgresqlDatabase(connectionString);
@@ -31,6 +31,33 @@ var upgrader = DeployChanges.To
     .WithTransactionPerScript()
     .LogToConsole()
     .Build();
+
+var mode = args.LastOrDefault() ?? "migrate";
+
+if (mode == "generate")
+{
+    var scripts = upgrader.GetScriptsToExecute();
+    var outputPath = Path.Combine(Directory.GetCurrentDirectory(), "pending-migration.sql");
+
+    using var writer = new StreamWriter(outputPath);
+
+    if (scripts.Count == 0)
+    {
+        writer.WriteLine("-- No pending migrations.");
+    }
+    else
+    {
+        foreach (var script in scripts)
+        {
+            writer.WriteLine($"-- ===== {script.Name} =====");
+            writer.WriteLine(script.Contents);
+            writer.WriteLine();
+        }
+    }
+
+    Console.WriteLine($"Wrote {scripts.Count} pending script(s) to {outputPath}");
+    return;
+}
 
 var result = upgrader.PerformUpgrade();
 
