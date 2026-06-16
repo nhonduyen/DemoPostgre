@@ -76,5 +76,22 @@ var result = upgrader.PerformUpgrade();
 if (!result.Successful)
 {
     Console.Error.WriteLine(result.Error);
+    Console.Error.WriteLine($"Failed script: {result.ErrorScript?.Name}");
+
+    // Derive rollback script name from failed script name
+    var rollbackName = result.ErrorScript?.Name.Replace(".RunOnce.", ".Rollback.");
+    var rollbackScript = Assembly
+        .GetExecutingAssembly()
+        .GetManifestResourceNames()
+        .FirstOrDefault(s => s.Contains(rollbackName ?? ""));
+
+    if (rollbackScript != null)
+    {
+        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(rollbackScript)!;
+        using var reader = new StreamReader(stream);
+        Console.Error.WriteLine("Rollback script to run manually:");
+        Console.Error.WriteLine(reader.ReadToEnd());
+    }
+
     Environment.Exit(-1);
 }
