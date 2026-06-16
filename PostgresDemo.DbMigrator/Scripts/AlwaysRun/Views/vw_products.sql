@@ -3,7 +3,6 @@ SELECT
     id,
     name,
     price,
-    description,
-    note
+    description
 FROM product
 WHERE deleted = false;
