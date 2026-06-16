@@ -1,1 +1,1 @@
-ALTER TABLE product DROP COLUMN note;
+ALTER TABLE product DROP COLUMN note CASCADE;
